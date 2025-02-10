@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: cine_postgres
+    environment:
+      POSTGRES_DB: cine
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - cine_pgdata:/var/lib/postgresql/data
+
+volumes:
+  cine_pgdata:
