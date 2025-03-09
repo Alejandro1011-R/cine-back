@@ -1,0 +1,1077 @@
+openapi: 3.0.3
+info:
+  title: Cine API
+  version: 1.0.0
+  description: Laravel 10 modular monolith API for cinema reservations, B2B cinema staff management, ticketing, simulated gateway payments, audit logs and statistics.
+servers:
+  - url: http://localhost/api
+security:
+  - bearerAuth: []
+tags:
+  - name: Auth
+  - name: Identity
+  - name: Catalog
+  - name: Cinema
+  - name: Ticketing
+  - name: Payments
+  - name: Statistics
+  - name: Audit
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      security: []
+      summary: Login with CI and password.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoginRequest" }
+      responses:
+        "200": { description: Token issued }
+        "401": { description: Invalid credentials }
+        "429": { description: Login rate limit exceeded }
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Revoke current Sanctum token.
+      responses:
+        "204": { description: Token revoked }
+        "401": { description: Unauthenticated }
+  /usuarios:
+    get:
+      tags: [Identity]
+      summary: List users scoped by role.
+      parameters:
+        - $ref: "#/components/parameters/PerPage"
+        - name: rol
+          in: query
+          schema: { $ref: "#/components/schemas/UserRole" }
+      responses:
+        "200": { description: Paginated users }
+        "403": { description: Forbidden }
+    post:
+      tags: [Identity]
+      security: []
+      summary: Public customer registration.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RegisterUserRequest" }
+      responses:
+        "201": { description: User created }
+        "409": { description: User already exists }
+        "422": { description: Validation error }
+  /usuarios/{ci}:
+    get:
+      tags: [Identity]
+      summary: Show user by CI.
+      parameters:
+        - $ref: "#/components/parameters/Ci"
+      responses:
+        "200": { description: User }
+        "403": { description: Forbidden }
+        "404": { description: Not found }
+    put:
+      tags: [Identity]
+      summary: Update own user or SuperAdmin-managed user.
+      parameters:
+        - $ref: "#/components/parameters/Ci"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateUserRequest" }
+      responses:
+        "204": { description: Updated }
+        "400": { description: CI mismatch }
+        "403": { description: Forbidden }
+        "422": { description: Validation error }
+    patch:
+      tags: [Identity]
+      summary: Update own user or SuperAdmin-managed user.
+      parameters:
+        - $ref: "#/components/parameters/Ci"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateUserRequest" }
+      responses:
+        "204": { description: Updated }
+    delete:
+      tags: [Identity]
+      summary: Soft delete user. SuperAdmin only.
+      parameters:
+        - $ref: "#/components/parameters/Ci"
+      responses:
+        "204": { description: Deleted }
+        "403": { description: Forbidden }
+        "404": { description: Not found }
+  /usuarios/{ci}/promote-socio:
+    put:
+      tags: [Identity]
+      summary: Promote self or target user to Socio.
+      parameters:
+        - $ref: "#/components/parameters/Ci"
+      responses:
+        "204": { description: Promoted }
+        "403": { description: Forbidden }
+  /usuarios/{ci}/change-role/{rol}:
+    put:
+      tags: [Identity]
+      summary: Change user role. SuperAdmin only. Audited.
+      parameters:
+        - $ref: "#/components/parameters/Ci"
+        - name: rol
+          in: path
+          required: true
+          schema: { $ref: "#/components/schemas/UserRole" }
+      responses:
+        "204": { description: Role changed }
+        "403": { description: Forbidden }
+        "422": { description: Invalid role }
+  /clientes:
+    get:
+      tags: [Identity]
+      summary: List clients scoped by role and assigned cinemas.
+      parameters:
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200": { description: Paginated clients }
+        "403": { description: Forbidden }
+    post:
+      tags: [Identity]
+      summary: Create client. Backoffice only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ClienteRequest" }
+      responses:
+        "201": { description: Client created }
+        "403": { description: Forbidden }
+  /clientes/{ci}:
+    get:
+      tags: [Identity]
+      summary: Show client by CI.
+      parameters:
+        - $ref: "#/components/parameters/Ci"
+      responses:
+        "200": { description: Client }
+        "403": { description: Forbidden }
+        "404": { description: Not found }
+    put:
+      tags: [Identity]
+      summary: Update client.
+      parameters:
+        - $ref: "#/components/parameters/Ci"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ClienteRequest" }
+      responses:
+        "204": { description: Updated }
+    patch:
+      tags: [Identity]
+      summary: Update client.
+      parameters:
+        - $ref: "#/components/parameters/Ci"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ClienteRequest" }
+      responses:
+        "204": { description: Updated }
+    delete:
+      tags: [Identity]
+      summary: Soft delete client.
+      parameters:
+        - $ref: "#/components/parameters/Ci"
+      responses:
+        "204": { description: Deleted }
+  /actores:
+    get:
+      tags: [Catalog]
+      summary: List actors.
+      parameters:
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200": { description: Paginated actors }
+    post:
+      tags: [Catalog]
+      summary: Create actor. Admin/SuperAdmin only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ActorRequest" }
+      responses:
+        "201": { description: Actor created }
+  /actores/{id}:
+    get:
+      tags: [Catalog]
+      summary: Show actor.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      responses:
+        "200": { description: Actor }
+    put:
+      tags: [Catalog]
+      summary: Update actor.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ActorRequest" }
+      responses:
+        "204": { description: Updated }
+    patch:
+      tags: [Catalog]
+      summary: Update actor.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ActorRequest" }
+      responses:
+        "204": { description: Updated }
+    delete:
+      tags: [Catalog]
+      summary: Soft delete actor.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      responses:
+        "204": { description: Deleted }
+  /generos:
+    get:
+      tags: [Catalog]
+      summary: List genres.
+      parameters:
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200": { description: Paginated genres }
+    post:
+      tags: [Catalog]
+      summary: Create genre. Admin/SuperAdmin only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GeneroRequest" }
+      responses:
+        "201": { description: Genre created }
+  /generos/{id}:
+    get:
+      tags: [Catalog]
+      summary: Show genre.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      responses:
+        "200": { description: Genre }
+    put:
+      tags: [Catalog]
+      summary: Update genre.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GeneroRequest" }
+      responses:
+        "204": { description: Updated }
+    patch:
+      tags: [Catalog]
+      summary: Update genre.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GeneroRequest" }
+      responses:
+        "204": { description: Updated }
+    delete:
+      tags: [Catalog]
+      summary: Soft delete genre.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      responses:
+        "204": { description: Deleted }
+  /peliculas:
+    get:
+      tags: [Catalog]
+      summary: List movies.
+      parameters:
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200": { description: Paginated movies }
+    post:
+      tags: [Catalog]
+      summary: Create movie. Admin/SuperAdmin only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PeliculaRequest" }
+      responses:
+        "201": { description: Movie created }
+  /peliculas/{id}:
+    get:
+      tags: [Catalog]
+      summary: Show movie.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      responses:
+        "200": { description: Movie }
+    put:
+      tags: [Catalog]
+      summary: Update movie.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PeliculaRequest" }
+      responses:
+        "204": { description: Updated }
+    patch:
+      tags: [Catalog]
+      summary: Update movie.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PeliculaRequest" }
+      responses:
+        "204": { description: Updated }
+  /cines:
+    get:
+      tags: [Cinema]
+      summary: List cinemas scoped by role.
+      parameters:
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200": { description: Paginated cinemas }
+    post:
+      tags: [Cinema]
+      summary: Create cinema. SuperAdmin only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CineRequest" }
+      responses:
+        "201": { description: Cinema created }
+  /cines/{id}:
+    get:
+      tags: [Cinema]
+      summary: Show cinema.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      responses:
+        "200": { description: Cinema }
+        "403": { description: Forbidden }
+    put:
+      tags: [Cinema]
+      summary: Update cinema.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CineRequest" }
+      responses:
+        "200": { description: Cinema updated }
+    patch:
+      tags: [Cinema]
+      summary: Update cinema.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CineRequest" }
+      responses:
+        "200": { description: Cinema updated }
+    delete:
+      tags: [Cinema]
+      summary: Soft delete cinema. SuperAdmin only.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      responses:
+        "204": { description: Deleted }
+  /cines/{id}/staff:
+    post:
+      tags: [Cinema]
+      summary: Assign Admin or Taquillero to a cinema. SuperAdmin only. Audited.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ci]
+              properties:
+                ci: { type: string, example: "77777777777" }
+      responses:
+        "200": { description: Staff assigned }
+        "403": { description: Forbidden }
+        "422": { description: User is not assignable staff }
+  /cines/{id}/staff/{ci}:
+    delete:
+      tags: [Cinema]
+      summary: Remove staff from cinema. SuperAdmin only. Audited.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+        - $ref: "#/components/parameters/Ci"
+      responses:
+        "204": { description: Staff detached }
+  /salas:
+    get:
+      tags: [Cinema]
+      summary: List rooms scoped by assigned cinemas.
+      parameters:
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200": { description: Paginated rooms }
+    post:
+      tags: [Cinema]
+      summary: Create room.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SalaRequest" }
+      responses:
+        "201": { description: Room created }
+  /salas/{id}:
+    get:
+      tags: [Cinema]
+      summary: Show room.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      responses:
+        "200": { description: Room }
+    put:
+      tags: [Cinema]
+      summary: Update room.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SalaRequest" }
+      responses:
+        "204": { description: Updated }
+    patch:
+      tags: [Cinema]
+      summary: Update room.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SalaRequest" }
+      responses:
+        "204": { description: Updated }
+    delete:
+      tags: [Cinema]
+      summary: Soft delete room.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      responses:
+        "204": { description: Deleted }
+  /butacas:
+    get:
+      tags: [Cinema]
+      summary: List seats scoped by assigned cinemas.
+      parameters:
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200": { description: Paginated seats }
+    post:
+      tags: [Cinema]
+      summary: Create seat.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ButacaRequest" }
+      responses:
+        "201": { description: Seat created }
+  /butacas/{id}:
+    get:
+      tags: [Cinema]
+      summary: Show seat.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      responses:
+        "200": { description: Seat }
+    put:
+      tags: [Cinema]
+      summary: Update seat.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ButacaRequest" }
+      responses:
+        "204": { description: Updated }
+    patch:
+      tags: [Cinema]
+      summary: Update seat.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ButacaRequest" }
+      responses:
+        "204": { description: Updated }
+    delete:
+      tags: [Cinema]
+      summary: Soft delete seat.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      responses:
+        "204": { description: Deleted }
+  /sesiones:
+    get:
+      tags: [Cinema]
+      summary: List sessions scoped by assigned cinemas.
+      parameters:
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200": { description: Paginated sessions }
+    post:
+      tags: [Cinema]
+      summary: Create session with schedule conflict validation. Audited.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SesionRequest" }
+      responses:
+        "201": { description: Session created }
+        "409": { description: Schedule conflict }
+  /sesiones/{idP}/{idS}/{fecha}:
+    get:
+      tags: [Cinema]
+      summary: Show session by composite key.
+      parameters:
+        - $ref: "#/components/parameters/IdP"
+        - $ref: "#/components/parameters/IdS"
+        - $ref: "#/components/parameters/Fecha"
+      responses:
+        "200": { description: Session }
+    delete:
+      tags: [Cinema]
+      summary: Soft delete session by composite key.
+      parameters:
+        - $ref: "#/components/parameters/IdP"
+        - $ref: "#/components/parameters/IdS"
+        - $ref: "#/components/parameters/Fecha"
+      responses:
+        "204": { description: Deleted }
+  /peliculas/{peliculaId}/sesiones:
+    get:
+      tags: [Cinema]
+      summary: List sessions for a movie scoped by assigned cinemas.
+      parameters:
+        - name: peliculaId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200": { description: Sessions }
+  /compras:
+    get:
+      tags: [Ticketing]
+      summary: List purchases scoped by customer or assigned cinemas.
+      parameters:
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200": { description: Paginated purchases }
+  /compras/{id}:
+    get:
+      tags: [Ticketing]
+      summary: Show purchase by payment id.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      responses:
+        "200": { description: Purchase }
+  /compras/tarjeta:
+    post:
+      tags: [Ticketing]
+      summary: Purchase seats using simulated external card gateway.
+      description: Creates temporary seat holds during payment and never stores full card numbers.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CardPurchaseRequest" }
+      responses:
+        "201": { description: Purchase created }
+        "402": { description: Gateway declined payment }
+        "409": { description: Seats reserved or temporarily held }
+  /compras/puntos:
+    post:
+      tags: [Ticketing]
+      summary: Purchase seats with user points using transactional row locks.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PointsPurchaseRequest" }
+      responses:
+        "201": { description: Purchase created }
+        "400": { description: Not enough points }
+        "409": { description: Seats reserved or temporarily held }
+  /compras/taquilla:
+    post:
+      tags: [Ticketing]
+      summary: Cash purchase from assigned cinema staff.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CashPurchaseRequest" }
+      responses:
+        "201": { description: Purchase created }
+        "403": { description: Staff is not assigned to session cinema }
+        "409": { description: Seats reserved or temporarily held }
+  /compras/{idP}/{idS}/{fecha}/{ci}/{idPg}:
+    delete:
+      tags: [Ticketing]
+      summary: Cancel purchase with transactional locks. Audited.
+      parameters:
+        - $ref: "#/components/parameters/IdP"
+        - $ref: "#/components/parameters/IdS"
+        - $ref: "#/components/parameters/Fecha"
+        - $ref: "#/components/parameters/Ci"
+        - name: idPg
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204": { description: Purchase cancelled }
+        "400": { description: Cancellation window closed }
+        "403": { description: Forbidden }
+  /descuentos:
+    get:
+      tags: [Ticketing]
+      summary: List discounts. Backoffice only.
+      parameters:
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200": { description: Paginated discounts }
+    post:
+      tags: [Ticketing]
+      summary: Create discount. Backoffice only. Audited.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DescuentoRequest" }
+      responses:
+        "201": { description: Discount created }
+  /descuentos/{id}:
+    get:
+      tags: [Ticketing]
+      summary: Show discount.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      responses:
+        "200": { description: Discount }
+    put:
+      tags: [Ticketing]
+      summary: Update discount. Audited.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DescuentoRequest" }
+      responses:
+        "204": { description: Updated }
+    delete:
+      tags: [Ticketing]
+      summary: Soft delete discount. Audited.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      responses:
+        "204": { description: Deleted }
+  /pagos:
+    get:
+      tags: [Payments]
+      summary: List payment records scoped by assigned cinemas. Backoffice only.
+      parameters:
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200": { description: Paginated payments }
+    delete:
+      tags: [Payments]
+      summary: Direct payment deletion is disabled.
+      responses:
+        "405": { description: Managed by purchase flows }
+  /pagos/{id}:
+    get:
+      tags: [Payments]
+      summary: Show payment.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      responses:
+        "200": { description: Payment }
+    delete:
+      tags: [Payments]
+      summary: Direct payment deletion is disabled.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      responses:
+        "405": { description: Managed by purchase flows }
+  /efectivos:
+    get:
+      tags: [Payments]
+      summary: List cash payment details. Backoffice only.
+      parameters:
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200": { description: Paginated cash payments }
+    post:
+      tags: [Payments]
+      summary: Direct cash payment creation is disabled.
+      responses:
+        "405": { description: Managed by purchase flows }
+  /efectivos/{id}:
+    get:
+      tags: [Payments]
+      summary: Show cash payment detail.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      responses:
+        "200": { description: Cash payment }
+    delete:
+      tags: [Payments]
+      summary: Direct deletion is disabled.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      responses:
+        "405": { description: Managed by purchase flows }
+  /puntos-pagos:
+    get:
+      tags: [Payments]
+      summary: List points payment details. Backoffice only.
+      parameters:
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200": { description: Paginated points payments }
+    post:
+      tags: [Payments]
+      summary: Direct points payment creation is disabled.
+      responses:
+        "405": { description: Managed by purchase flows }
+  /puntos-pagos/{id}:
+    get:
+      tags: [Payments]
+      summary: Show points payment detail.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      responses:
+        "200": { description: Points payment }
+    delete:
+      tags: [Payments]
+      summary: Direct deletion is disabled.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      responses:
+        "405": { description: Managed by purchase flows }
+  /web-payments:
+    get:
+      tags: [Payments]
+      summary: List web payment metadata. Backoffice only.
+      parameters:
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200": { description: Paginated web payments }
+    post:
+      tags: [Payments]
+      summary: Direct web payment creation is disabled.
+      responses:
+        "405": { description: Managed by purchase flows }
+  /web-payments/{id}:
+    get:
+      tags: [Payments]
+      summary: Show web payment metadata.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      responses:
+        "200": { description: Web payment }
+    delete:
+      tags: [Payments]
+      summary: Direct deletion is disabled.
+      parameters:
+        - $ref: "#/components/parameters/NumericId"
+      responses:
+        "405": { description: Managed by purchase flows }
+  /estadisticas/by-fecha/{inicio}/{fin}:
+    get:
+      tags: [Statistics]
+      summary: Purchase statistics by date range scoped by assigned cinemas.
+      parameters:
+        - name: inicio
+          in: path
+          required: true
+          schema: { type: string, format: date-time }
+        - name: fin
+          in: path
+          required: true
+          schema: { type: string, format: date-time }
+      responses:
+        "200": { description: Statistics }
+  /estadisticas/by-tipo/{tipo}:
+    get:
+      tags: [Statistics]
+      summary: Purchases by payment type.
+      parameters:
+        - name: tipo
+          in: path
+          required: true
+          schema: { type: string, enum: [Tarjeta, Efectivo, Puntos] }
+      responses:
+        "200": { description: Purchases }
+  /estadisticas/by-pelicula/{metric}:
+    get:
+      tags: [Statistics]
+      summary: Statistics grouped by movie.
+      parameters:
+        - $ref: "#/components/parameters/Metric"
+      responses:
+        "200": { description: Statistics }
+  /estadisticas/by-cliente/{metric}:
+    get:
+      tags: [Statistics]
+      summary: Statistics grouped by client.
+      parameters:
+        - $ref: "#/components/parameters/Metric"
+      responses:
+        "200": { description: Statistics }
+  /audit-logs:
+    get:
+      tags: [Audit]
+      summary: List audit logs. SuperAdmin only.
+      parameters:
+        - $ref: "#/components/parameters/PerPage"
+        - name: actor_ci
+          in: query
+          schema: { type: string }
+        - name: action
+          in: query
+          schema: { type: string }
+        - name: auditable_type
+          in: query
+          schema: { type: string }
+      responses:
+        "200": { description: Paginated audit logs }
+        "403": { description: Forbidden }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Sanctum
+  parameters:
+    NumericId:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer }
+    Ci:
+      name: ci
+      in: path
+      required: true
+      schema: { type: string, example: "11111111111" }
+    IdP:
+      name: idP
+      in: path
+      required: true
+      schema: { type: integer }
+    IdS:
+      name: idS
+      in: path
+      required: true
+      schema: { type: integer }
+    Fecha:
+      name: fecha
+      in: path
+      required: true
+      schema: { type: string, example: "2026-06-15 20:00:00" }
+    PerPage:
+      name: per_page
+      in: query
+      required: false
+      schema: { type: integer, minimum: 1, maximum: 100, default: 15 }
+    Metric:
+      name: metric
+      in: path
+      required: true
+      schema:
+        type: string
+        enum: [dinero, efectivo, transferencia, puntos, butacas, butacas-efectivo, butacas-transferencia, butacas-puntos]
+  schemas:
+    UserRole:
+      type: string
+      enum: [Cliente, Socio, Taquillero, Admin, SuperAdmin]
+    LoginRequest:
+      type: object
+      required: [ci, contrasena]
+      properties:
+        ci: { type: string, example: "99999999999" }
+        contrasena: { type: string, example: "password123" }
+    RegisterUserRequest:
+      type: object
+      required: [ci, contrasena, contrasena_confirmation]
+      properties:
+        ci: { type: string, example: "12345678901" }
+        nombre_s: { type: string, nullable: true, maxLength: 50 }
+        apellidos: { type: string, nullable: true, maxLength: 50 }
+        correo: { type: string, format: email, nullable: true, maxLength: 256 }
+        contrasena: { type: string, minLength: 8, example: "password123" }
+        contrasena_confirmation: { type: string, minLength: 8, example: "password123" }
+    UpdateUserRequest:
+      allOf:
+        - $ref: "#/components/schemas/RegisterUserRequest"
+    ClienteRequest:
+      type: object
+      required: [ci]
+      properties:
+        ci: { type: string, example: "11111111111" }
+        correo: { type: string, format: email, nullable: true }
+        confiabilidad: { type: boolean, nullable: true }
+    ActorRequest:
+      type: object
+      properties:
+        nombre_a: { type: string, nullable: true, maxLength: 50 }
+    GeneroRequest:
+      type: object
+      properties:
+        nombre_g: { type: string, nullable: true, maxLength: 30 }
+    PeliculaRequest:
+      type: object
+      properties:
+        sinopsis: { type: string, nullable: true }
+        anno: { type: integer, nullable: true }
+        nacionalidad: { type: integer, nullable: true }
+        duracion: { type: integer, nullable: true }
+        titulo: { type: string, nullable: true, maxLength: 50 }
+        imagen: { type: string, nullable: true }
+        trailer: { type: string, nullable: true }
+        actor_ids:
+          type: array
+          items: { type: integer }
+        genero_ids:
+          type: array
+          items: { type: integer }
+    CineRequest:
+      type: object
+      properties:
+        nombre: { type: string, nullable: true, maxLength: 100 }
+        direccion: { type: string, nullable: true, maxLength: 200 }
+    SalaRequest:
+      type: object
+      properties:
+        id_c: { type: integer, nullable: true }
+        capacidad: { type: integer, nullable: true }
+    ButacaRequest:
+      type: object
+      required: [id_s]
+      properties:
+        id_s: { type: integer }
+    SesionRequest:
+      type: object
+      required: [id_p, id_s, fecha]
+      properties:
+        id_p: { type: integer }
+        id_s: { type: integer }
+        fecha: { type: string, format: date-time, example: "2026-06-15 20:00:00" }
+    CardPurchaseRequest:
+      type: object
+      required: [id_p, id_s, fecha, ci, codigo_t, fecha_de_compra, butaca_ids]
+      properties:
+        id_p: { type: integer }
+        id_s: { type: integer }
+        fecha: { type: string, format: date-time }
+        ci: { type: string }
+        cantidad: { type: number, format: float, nullable: true }
+        codigo_t:
+          type: string
+          description: Card number sent only to the simulated gateway; never persisted.
+          example: "4532123412341234"
+        fecha_de_compra: { type: string, format: date-time }
+        butaca_ids:
+          type: array
+          minItems: 1
+          items: { type: integer }
+        descuento_ids:
+          type: array
+          items: { type: integer }
+    PointsPurchaseRequest:
+      type: object
+      required: [id_p, id_s, fecha, ci, cantidad, fecha_de_compra, butaca_ids]
+      properties:
+        id_p: { type: integer }
+        id_s: { type: integer }
+        fecha: { type: string, format: date-time }
+        ci: { type: string }
+        cantidad: { type: integer }
+        fecha_de_compra: { type: string, format: date-time }
+        butaca_ids:
+          type: array
+          minItems: 1
+          items: { type: integer }
+    CashPurchaseRequest:
+      type: object
+      required: [id_p, id_s, fecha, ci_taquillero, ci, correo, fecha_de_compra, butaca_ids]
+      properties:
+        id_p: { type: integer }
+        id_s: { type: integer }
+        fecha: { type: string, format: date-time }
+        ci_taquillero: { type: string }
+        ci: { type: string }
+        cantidad: { type: number, format: float, nullable: true }
+        correo: { type: string, format: email }
+        fecha_de_compra: { type: string, format: date-time }
+        butaca_ids:
+          type: array
+          minItems: 1
+          items: { type: integer }
+        descuento_ids:
+          type: array
+          items: { type: integer }
+    DescuentoRequest:
+      type: object
+      properties:
+        nombre_d: { type: string, nullable: true, maxLength: 30 }
+        porciento: { type: number, nullable: true }
